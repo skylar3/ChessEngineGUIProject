@@ -5,6 +5,7 @@ import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
@@ -14,8 +15,6 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.RowConstraints;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.Objects;
@@ -110,22 +109,7 @@ public class HelloApplication extends Application {
         //make a funcion that adds
         // Add chessboard and pieces to the layout
         root.getChildren().addAll(chessBoardView, chessBoardLayout);
-
-
-
-
-
-        final Text target = new Text(300, 100, "DROP HERE");
-
-        for(int i = 0; i < 8; i++) {
-            for(int j = 0; j < 8; j++) {
-                Node piece = getNodeFromGridPane(chessBoardLayout, i, j);
-                if (piece != null) {
-                    addDrag(piece);
-                }
-
-            }
-        }
+        addDragAll(chessBoardLayout);
 
 
 
@@ -135,67 +119,6 @@ public class HelloApplication extends Application {
 
 
 
-        //drag and drop logic cont
-        target.setOnDragOver(new EventHandler <DragEvent>() {
-            public void handle(DragEvent event) {
-                /* data is dragged over the target */
-                System.out.println("onDragOver");
-                System.out.println(getNodeFromGridPane(chessBoardLayout, 1, 1));
-
-
-                /* accept it only if it is  not dragged from the same node
-                 * and if it has a string data */
-                if (event.getGestureSource() != target &&
-                        event.getDragboard().hasImage()) {
-                    /* allow for both copying and moving, whatever user chooses */
-                    event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
-                }
-
-                event.consume();
-            }
-        });
-        target.setOnDragEntered(new EventHandler <DragEvent>() {
-            public void handle(DragEvent event) {
-                /* the drag-and-drop gesture entered the target */
-                System.out.println("onDragEntered");
-                /* show to the user that it is an actual gesture target */
-                if (event.getGestureSource() != target &&
-                        event.getDragboard().hasString()) {
-                    target.setFill(Color.GREEN);
-                }
-
-                event.consume();
-            }
-        });
-        target.setOnDragExited(new EventHandler <DragEvent>() {
-            public void handle(DragEvent event) {
-                /* mouse moved away, remove the graphical cues */
-                target.setFill(Color.BLACK);
-
-                event.consume();
-            }
-        });
-        target.setOnDragDropped(new EventHandler <DragEvent>() {
-            public void handle(DragEvent event) {
-                System.out.println("onDragDropped");
-                Dragboard db = event.getDragboard();
-                boolean success = false;
-
-                if (db.hasImage()) {
-                    // If image is dropped, change the target to show the dropped image
-                    target.setText("");  // Clear the "DROP HERE" text
-                    ImageView droppedImage = new ImageView(db.getImage());
-                    droppedImage.setFitWidth(75); // You can resize it as necessary
-                    droppedImage.setFitHeight(75);
-                    root.getChildren().add(droppedImage); // Add the dropped image to the scene
-
-                    success = true;
-                }
-
-                event.setDropCompleted(success);
-                event.consume();
-            }
-        });
 
 
 
@@ -204,9 +127,9 @@ public class HelloApplication extends Application {
 
         // Set up the scene
         //removeNodeByRowColumnIndex(1, 1, chessBoardLayout);
+
         Scene scene = new Scene(root, 600, 600);
         stage.setTitle("Chess Game");
-        root.getChildren().add(target);
         stage.setScene(scene);
         stage.show();
     }
@@ -225,6 +148,12 @@ public class HelloApplication extends Application {
         imageView.setFitWidth(75);  // Resize the piece
         imageView.setFitHeight(75); // Resize the piece
         gridPane.add(imageView, col, row); // Place piece at the specified position
+        addDrag(imageView, gridPane);
+        addTarget(gridPane,col,row);
+
+
+
+        System.out.println(pieceImage.toString());
 
     }
     public void removeNodeByRowColumnIndex(final int row,final int column,GridPane gridPane) {
@@ -241,20 +170,40 @@ public class HelloApplication extends Application {
         }
         return null;
     }
-    private void addDrag(Node piece)
+    private int convertLayoutXtoGridX(int layoutX) {
+        return (int)layoutX/75;
+    }
+    private int convertLayoutYtoGridY(int layoutY) {
+        return (int)layoutY/75;
+    }
+
+
+    /**
+     * Below defines the Dragging mechanisms. Defines a source to drag and a target.
+     * @param piece
+     * @param chessBoardLayout
+     */
+    private void addDrag(Node piece, GridPane chessBoardLayout)
     {
+
         // 1. Create the Drag Source
+
 
 
         // Set an action when the label is detected for dragging
         piece.setOnDragDetected(event -> {
+
 
             // Start a drag-and-drop operation with COPY transfer mode
             Dragboard db = piece.startDragAndDrop(TransferMode.COPY);
 
             // Define the content to be transferred
             ClipboardContent content = new ClipboardContent();
-            content.putString("Data to be transferred");
+            //content.putString(piece.getLayoutX() + "," + piece.getLayoutY());
+            content.putString(convertLayoutXtoGridX((int)piece.getLayoutX()) + "," + convertLayoutYtoGridY((int)piece.getLayoutY()));  // Store as a string "col,row"
+
+            ImageView imageView = (ImageView) piece;
+            content.putImage(imageView.getImage());
 
             // Set the content for the dragboard
             db.setContent(content);
@@ -265,6 +214,7 @@ public class HelloApplication extends Application {
                 public void handle(DragEvent event) {
                     /* the drag-and-drop gesture ended */
                     System.out.println("onDragDone");
+
                     /* if the data was successfully moved, clear it */
 
 
@@ -274,6 +224,73 @@ public class HelloApplication extends Application {
 
         });
     }
+
+    private void addTarget(GridPane gridPane, int col, int row) {
+        Label dropTarget = new Label(row+ col + "");
+        gridPane.add(dropTarget, col, row);
+        // Set an action when a drag enters the drop target area
+        dropTarget.setOnDragOver(event -> {
+
+                    // Check if the dragged item is not the drop target itself and if it contains string data
+                    if (event.getGestureSource() != dropTarget) {
+
+                        // Accept the transfer modes (COPY or MOVE in this case)
+                        event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+
+                    }
+
+
+                    // Consume the event to indicate that it's being handled
+                });
+
+            dropTarget.setOnDragDropped(event->{
+
+                Dragboard db = event.getDragboard();
+                if (db.hasString()) { // Checking if there is string data (the original position)
+                    // Retrieve the original position (col, row) from the dragboard
+                    String position = db.getString();
+                    System.out.println(position);
+                    if (position != null) {
+                        String[] positionParts = position.split(",");
+                        int originalCol = Integer.parseInt(positionParts[0]);
+                        int originalRow = Integer.parseInt(positionParts[1]);
+
+                        removeNodeByRowColumnIndex(originalRow, originalCol, gridPane);
+                        removeNodeByRowColumnIndex(originalRow, originalCol, gridPane);
+
+                    }
+                }
+
+                boolean success = false;
+                if(getNodeFromGridPane(gridPane, col, row) != null) {
+                    addPiece(gridPane,db.getImage(), col, row);
+
+
+                    success = true;
+                    System.out.println(db.getImage());
+                }
+                event.setDropCompleted(success);
+
+                event.consume();
+                });
+    }
+
+    private void addDragAll(GridPane chessBoardLayout) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Node piece = getNodeFromGridPane(chessBoardLayout, i, j);
+                if (piece != null) {
+
+                    addDrag(piece, chessBoardLayout);
+
+                }
+                addTarget(chessBoardLayout, i, j);
+
+            }
+        }
+    }
+
+
 
     public static void main(String[] args) {
         launch();
