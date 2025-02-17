@@ -3,10 +3,14 @@ package com.example.chessengineguiproject;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.*;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.RowConstraints;
@@ -101,45 +105,43 @@ public class HelloApplication extends Application {
             blackPawn.setCol(i);
             addPiece(chessBoardLayout, blackPawn.getPawn(), blackPawn.getCol(), 6);
         }
-
+        //drag piece logic
+        //get node from chess board.
+        //make a funcion that adds
         // Add chessboard and pieces to the layout
         root.getChildren().addAll(chessBoardView, chessBoardLayout);
 
-        ImageView source = whiteRookL.getRookImageView();
+
+
+
+
         final Text target = new Text(300, 100, "DROP HERE");
 
+        for(int i = 0; i < 8; i++) {
+            for(int j = 0; j < 8; j++) {
+                Node piece = getNodeFromGridPane(chessBoardLayout, i, j);
+                if (piece != null) {
+                    addDrag(piece);
+                }
 
-
-
-
-
-
-
-
-
-
-
-
-        //setup drag and drop logic
-        source.setOnDragDetected(new EventHandler<MouseEvent>() {
-            public void handle(MouseEvent event) {
-                System.out.println("drag detected");
-
-                Dragboard db = source.startDragAndDrop(TransferMode.ANY);
-
-                ClipboardContent content = new ClipboardContent();
-                content.putImage(whiteRookL.getRook());
-                db.setContent(content);
-
-                event.consume();
             }
-        });
+        }
+
+
+
+
+
+
+
+
 
         //drag and drop logic cont
         target.setOnDragOver(new EventHandler <DragEvent>() {
             public void handle(DragEvent event) {
                 /* data is dragged over the target */
                 System.out.println("onDragOver");
+                System.out.println(getNodeFromGridPane(chessBoardLayout, 1, 1));
+
 
                 /* accept it only if it is  not dragged from the same node
                  * and if it has a string data */
@@ -196,23 +198,14 @@ public class HelloApplication extends Application {
         });
 
 
-        source.setOnDragDone(new EventHandler <DragEvent>() {
-            public void handle(DragEvent event) {
-                /* the drag-and-drop gesture ended */
-                System.out.println("onDragDone");
-                /* if the data was successfully moved, clear it */
 
-
-                event.consume();
-            }
-        });
 
 
 
         // Set up the scene
+        //removeNodeByRowColumnIndex(1, 1, chessBoardLayout);
         Scene scene = new Scene(root, 600, 600);
         stage.setTitle("Chess Game");
-        root.getChildren().add(source);
         root.getChildren().add(target);
         stage.setScene(scene);
         stage.show();
@@ -233,6 +226,53 @@ public class HelloApplication extends Application {
         imageView.setFitHeight(75); // Resize the piece
         gridPane.add(imageView, col, row); // Place piece at the specified position
 
+    }
+    public void removeNodeByRowColumnIndex(final int row,final int column,GridPane gridPane) {
+       Node node  = getNodeFromGridPane(gridPane, column, row);
+
+        gridPane.getChildren().remove(node);
+    }
+
+    private Node getNodeFromGridPane(GridPane gridPane, int col, int row) {
+        for (Node node : gridPane.getChildren()) {
+            if (GridPane.getColumnIndex(node) == col && GridPane.getRowIndex(node) == row) {
+                return node;
+            }
+        }
+        return null;
+    }
+    private void addDrag(Node piece)
+    {
+        // 1. Create the Drag Source
+
+
+        // Set an action when the label is detected for dragging
+        piece.setOnDragDetected(event -> {
+
+            // Start a drag-and-drop operation with COPY transfer mode
+            Dragboard db = piece.startDragAndDrop(TransferMode.COPY);
+
+            // Define the content to be transferred
+            ClipboardContent content = new ClipboardContent();
+            content.putString("Data to be transferred");
+
+            // Set the content for the dragboard
+            db.setContent(content);
+
+            // Consume the event to indicate that it's being handled
+            event.consume();
+            piece.setOnDragDone(new EventHandler <DragEvent>() {
+                public void handle(DragEvent event) {
+                    /* the drag-and-drop gesture ended */
+                    System.out.println("onDragDone");
+                    /* if the data was successfully moved, clear it */
+
+
+                    event.consume();
+                }
+            });
+
+        });
     }
 
     public static void main(String[] args) {
